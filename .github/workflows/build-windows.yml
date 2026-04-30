@@ -14,10 +14,17 @@ on:
     paths-ignore:
       - 'docs/**'
       - '**/*.md'
+      - 'NOTICE'
+      - 'LICENSE*'
+      - '.gitignore'
+      - 'CODE_OF_CONDUCT.md'
 
 concurrency:
   group: build-windows-${{ github.ref }}
   cancel-in-progress: true
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -47,6 +54,11 @@ jobs:
         with:
           version: '25.x'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install cargo-about
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-about
 
       - name: Locate Inno Setup
         shell: pwsh
@@ -112,3 +124,46 @@ jobs:
           name: poppy-windows-arm64-installer
           path: ${{ steps.find.outputs.installer_path }}
           if-no-files-found: error
+
+      # Auto-publish: when this workflow runs on master and produces an
+      # installer, drop a draft release with the installer attached. The
+      # tag is the release_tag input (default 0.1.0); existing release
+      # under the same tag is replaced cleanly.
+      - name: Create / update draft release
+        if: github.ref == 'refs/heads/master' && steps.find.outputs.installer_path
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: pwsh
+        run: |
+          $tag = "v${{ github.event.inputs.release_tag || '0.1.0' }}"
+          $title = "Poppy $tag"
+          $notes = @"
+          Automated build of $tag from commit ${{ github.sha }}.
+
+          ## Downloads
+
+          - **Poppy-Setup-arm64.exe** — Windows ARM64 installer (Windows 10 1903+ / Windows 11)
+
+          The installer registers AppId ``poppy-terminal-oss``, which means it
+          upgrades any prior Poppy installation (including stub releases) in
+          place.
+          "@
+
+          # If an existing release uses this tag, replace it cleanly. Drafts
+          # have no git tag, so --cleanup-tag would 422 on them.
+          if (gh release view $tag --repo $env:GITHUB_REPOSITORY 2>$null) {
+            $isDraft = gh release view $tag --repo $env:GITHUB_REPOSITORY --json isDraft --jq '.isDraft'
+            if ($isDraft -eq 'true') {
+              gh release delete $tag --yes --repo $env:GITHUB_REPOSITORY
+            } else {
+              gh release delete $tag --yes --cleanup-tag --repo $env:GITHUB_REPOSITORY
+            }
+          }
+
+          gh release create $tag `
+            "${{ steps.find.outputs.installer_path }}" `
+            "${{ steps.find.outputs.exe_path }}" `
+            --draft `
+            --repo $env:GITHUB_REPOSITORY `
+            --title $title `
+            --notes $notes
