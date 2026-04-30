@@ -23,6 +23,13 @@
 #endif
 #define IconDir "..\..\app\channels\oss\icon\no-padding"
 
+; Map our short arch identifier to Inno Setup's modern arch names.
+#if Arch == "arm64"
+  #define ArchAllowed "arm64"
+#else
+  #define ArchAllowed "x64compatible"
+#endif
+
 [Setup]
 ; Stable AppId so a future real-build installer upgrades the stub in place.
 AppId=poppy-terminal-oss
@@ -35,8 +42,8 @@ AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
 DefaultDirName={autopf}\{#MyAppName}
-ArchitecturesAllowed={#Arch}
-ArchitecturesInstallIn64BitMode={#Arch}
+ArchitecturesAllowed={#ArchAllowed}
+ArchitecturesInstallIn64BitMode={#ArchAllowed}
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog

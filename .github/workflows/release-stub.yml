@@ -17,9 +17,16 @@ permissions:
 
 jobs:
   build:
-    name: Build and publish stub installer
+    name: Build stub installer (${{ matrix.target.arch }})
     runs-on: windows-latest
     timeout-minutes: 15
+
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - { rust: x86_64-pc-windows-msvc,  arch: x64 }
+          - { rust: aarch64-pc-windows-msvc, arch: arm64 }
 
     steps:
       - name: Checkout
@@ -29,11 +36,15 @@ jobs:
         shell: pwsh
         run: rustc --version
 
+      - name: Add ${{ matrix.target.rust }} target
+        shell: pwsh
+        run: rustup target add ${{ matrix.target.rust }}
+
       - name: Compile stub poppy.exe
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Path target-stub -Force | Out-Null
-          rustc -O script/stub/poppy_stub.rs -o target-stub/poppy.exe
+          rustc --target ${{ matrix.target.rust }} -O script/stub/poppy_stub.rs -o target-stub/poppy.exe
           $exe = Get-Item target-stub/poppy.exe
           Write-Output "Built: $($exe.FullName) ($([math]::Round($exe.Length/1KB,1)) KB)"
 
@@ -52,7 +63,6 @@ jobs:
           }
           if (-not $found) { throw "ISCC.exe not found" }
           Write-Output "Using Inno Setup at: $found"
-          & "$found\ISCC.exe" /? | Select-Object -First 1
           echo $found | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Build installer
@@ -60,55 +70,85 @@ jobs:
         run: |
           $tag = "${{ github.event.inputs.release_tag }}"
           $version = $tag.TrimStart('v')
-          ISCC /DMyAppVersion="$version" /DOutputName="Poppy-Setup-x64-stub" script\stub\poppy-stub-installer.iss
+          $arch = "${{ matrix.target.arch }}"
+          $output = "Poppy-Setup-$arch-stub"
+          ISCC /DMyAppVersion="$version" /DArch="$arch" /DOutputName="$output" script\stub\poppy-stub-installer.iss
           $installer = Get-ChildItem -Path script\stub\Output -Filter '*.exe' | Select-Object -First 1
           Write-Output "Installer: $($installer.FullName) ($([math]::Round($installer.Length/1KB,1)) KB)"
-          "installer_path=$($installer.FullName)" >> $env:GITHUB_OUTPUT
-        id: pack
 
-      - name: Upload installer as workflow artifact
+      - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
-          name: poppy-stub-installer
+          name: poppy-stub-installer-${{ matrix.target.arch }}
           path: script/stub/Output/*.exe
           if-no-files-found: error
 
-      - name: Create GitHub Release
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download all installer artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Stage installers
+        id: stage
+        run: |
+          mkdir -p release-assets
+          find artifacts -type f -name '*.exe' -exec cp -v {} release-assets/ \;
+          ls -la release-assets
+
+      - name: Create or replace draft release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        shell: pwsh
         run: |
-          $tag = "${{ github.event.inputs.release_tag }}"
-          $publish = "${{ github.event.inputs.publish }}"
-          $title = "Poppy $tag (placeholder installer)"
-          $notes = @"
-          Placeholder installer with a stub poppy.exe so the install/uninstall
-          flow can be tested end-to-end. The full Poppy build is in progress
-          on CI; when it lands, re-running this installer will upgrade the
-          payload in place (same AppId).
+          tag="${{ github.event.inputs.release_tag }}"
+          publish="${{ github.event.inputs.publish }}"
+          title="Poppy $tag (placeholder installers)"
+          notes_file=$(mktemp)
+          cat > "$notes_file" <<'EOF'
+          Placeholder Windows installers (x64 + ARM64) with a stub `poppy.exe`
+          payload, so the install/uninstall flow can be exercised end-to-end.
+          The full Poppy build is in progress on CI; when it lands, re-running
+          this installer will upgrade the payload in place (same AppId).
 
           ## What this installs
 
-          - ``C:\Program Files\Poppy\poppy.exe`` (~150 KB stub)
+          - `C:\Program Files\Poppy\poppy.exe` (~150 KB stub)
           - Start Menu shortcut, optional Desktop shortcut
-          - ``C:\Program Files\Poppy\bin\poppy.cmd`` CLI launcher
+          - `C:\Program Files\Poppy\bin\poppy.cmd` CLI launcher
           - Uninstaller registered in Add/Remove Programs
+
+          ## Architectures
+
+          - `Poppy-Setup-x64-stub.exe` — x64 Windows 10 1903 / 11
+          - `Poppy-Setup-arm64-stub.exe` — ARM64 Windows 10 1903 / 11
 
           ## What this does NOT do yet
 
           The stub binary just prints a message and exits. None of the terminal
           functionality is present — that arrives with the real build.
-          "@
-          $installer = "${{ steps.pack.outputs.installer_path }}"
+          EOF
 
-          # If a release with this tag already exists, drop it so we can re-create cleanly.
-          gh release view $tag 2>$null
-          if ($LASTEXITCODE -eq 0) {
-            Write-Output "Removing existing release $tag"
-            gh release delete $tag --yes --cleanup-tag
-          }
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Removing existing release $tag"
+            gh release delete "$tag" --yes --cleanup-tag --repo "$GITHUB_REPOSITORY"
+          fi
 
-          $args = @($tag, $installer, '--title', $title, '--notes', $notes)
-          if ($publish -ne 'true') { $args += '--draft' }
-          gh release create @args
-          Write-Output "Release $tag created."
+          flags=()
+          if [ "$publish" != "true" ]; then flags+=(--draft); fi
+
+          gh release create "$tag" release-assets/*.exe \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$title" \
+            --notes-file "$notes_file" \
+            "${flags[@]}"
+          echo "Release $tag created."
