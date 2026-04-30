@@ -1,0 +1,102 @@
+name: Release Poppy stub installer (Windows)
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Release tag (e.g. v0.1.0-stub)'
+        required: false
+        default: 'v0.1.0-stub'
+      publish:
+        description: 'Publish release immediately (instead of draft)'
+        required: false
+        default: 'false'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build and publish stub installer
+    runs-on: windows-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show rustc version
+        shell: pwsh
+        run: rustc --version
+
+      - name: Compile stub poppy.exe
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path target-stub -Force | Out-Null
+          rustc -O script/stub/poppy_stub.rs -o target-stub/poppy.exe
+          $exe = Get-Item target-stub/poppy.exe
+          Write-Output "Built: $($exe.FullName) ($([math]::Round($exe.Length/1KB,1)) KB)"
+
+      - name: Install Inno Setup 6
+        shell: pwsh
+        run: |
+          choco install innosetup --version=6.2.2 --no-progress -y
+          echo "C:\Program Files (x86)\Inno Setup 6" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          $tag = "${{ github.event.inputs.release_tag }}"
+          $version = $tag.TrimStart('v')
+          ISCC /DMyAppVersion="$version" /DOutputName="Poppy-Setup-x64-stub" script\stub\poppy-stub-installer.iss
+          $installer = Get-ChildItem -Path script\stub\Output -Filter '*.exe' | Select-Object -First 1
+          Write-Output "Installer: $($installer.FullName) ($([math]::Round($installer.Length/1KB,1)) KB)"
+          "installer_path=$($installer.FullName)" >> $env:GITHUB_OUTPUT
+        id: pack
+
+      - name: Upload installer as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: poppy-stub-installer
+          path: script/stub/Output/*.exe
+          if-no-files-found: error
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: pwsh
+        run: |
+          $tag = "${{ github.event.inputs.release_tag }}"
+          $publish = "${{ github.event.inputs.publish }}"
+          $title = "Poppy $tag (placeholder installer)"
+          $notes = @"
+          Placeholder installer with a stub poppy.exe so the install/uninstall
+          flow can be tested end-to-end. The full Poppy build is in progress
+          on CI; when it lands, re-running this installer will upgrade the
+          payload in place (same AppId).
+
+          ## What this installs
+
+          - ``C:\Program Files\Poppy\poppy.exe`` (~150 KB stub)
+          - Start Menu shortcut, optional Desktop shortcut
+          - ``C:\Program Files\Poppy\bin\poppy.cmd`` CLI launcher
+          - Uninstaller registered in Add/Remove Programs
+
+          ## What this does NOT do yet
+
+          The stub binary just prints a message and exits. None of the terminal
+          functionality is present — that arrives with the real build.
+          "@
+          $installer = "${{ steps.pack.outputs.installer_path }}"
+
+          # If a release with this tag already exists, drop it so we can re-create cleanly.
+          gh release view $tag 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            Write-Output "Removing existing release $tag"
+            gh release delete $tag --yes --cleanup-tag
+          }
+
+          $args = @($tag, $installer, '--title', $title, '--notes', $notes)
+          if ($publish -ne 'true') { $args += '--draft' }
+          gh release create @args
+          Write-Output "Release $tag created."
