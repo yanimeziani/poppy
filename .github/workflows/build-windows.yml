@@ -42,6 +42,12 @@ jobs:
           rustup show
           rustup target add x86_64-pc-windows-msvc
 
+      - name: Install protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          version: '25.x'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Locate Inno Setup
         shell: pwsh
         run: |
