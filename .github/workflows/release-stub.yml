@@ -140,7 +140,13 @@ jobs:
 
           if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "Removing existing release $tag"
-            gh release delete "$tag" --yes --cleanup-tag --repo "$GITHUB_REPOSITORY"
+            # Drafts have no real git tag, so --cleanup-tag would 422; only clean the tag for published releases.
+            is_draft=$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json isDraft --jq '.isDraft')
+            if [ "$is_draft" = "true" ]; then
+              gh release delete "$tag" --yes --repo "$GITHUB_REPOSITORY"
+            else
+              gh release delete "$tag" --yes --cleanup-tag --repo "$GITHUB_REPOSITORY"
+            fi
           fi
 
           flags=()
