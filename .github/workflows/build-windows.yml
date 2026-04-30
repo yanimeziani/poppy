@@ -65,23 +65,15 @@ jobs:
           Write-Output "Using Inno Setup at: $found"
           echo $found | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
-      - name: Cache cargo registry + git
-        uses: actions/cache@v4
+      # Caches ~/.cargo/{registry,git} and target/. Saves the cache even on
+      # job failure (`cache-on-failure: true`), so partial progress sticks
+      # and subsequent runs only rebuild what actually changed.
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
-          restore-keys: |
-            cargo-${{ runner.os }}-
-
-      - name: Cache cargo target
-        uses: actions/cache@v4
-        with:
-          path: target
-          key: target-${{ runner.os }}-oss-arm64-${{ hashFiles('Cargo.lock') }}
-          restore-keys: |
-            target-${{ runner.os }}-oss-arm64-
+          shared-key: poppy-oss-arm64
+          cache-on-failure: true
+          cache-all-crates: true
 
       - name: Bundle (oss channel, arm64)
         shell: pwsh
