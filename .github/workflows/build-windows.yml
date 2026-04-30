@@ -21,7 +21,7 @@ concurrency:
 
 jobs:
   build:
-    name: Build x64 installer
+    name: Build arm64 installer
     runs-on: windows-latest
     timeout-minutes: 120
 
@@ -40,7 +40,7 @@ jobs:
         shell: pwsh
         run: |
           rustup show
-          rustup target add x86_64-pc-windows-msvc
+          rustup target add aarch64-pc-windows-msvc
 
       - name: Install protoc
         uses: arduino/setup-protoc@v3
@@ -79,16 +79,16 @@ jobs:
         uses: actions/cache@v4
         with:
           path: target
-          key: target-${{ runner.os }}-oss-${{ hashFiles('Cargo.lock') }}
+          key: target-${{ runner.os }}-oss-arm64-${{ hashFiles('Cargo.lock') }}
           restore-keys: |
-            target-${{ runner.os }}-oss-
+            target-${{ runner.os }}-oss-arm64-
 
-      - name: Bundle (oss channel)
+      - name: Bundle (oss channel, arm64)
         shell: pwsh
         env:
           GIT_RELEASE_TAG: ${{ github.event.inputs.release_tag || '0.1.0' }}
         run: |
-          ./script/windows/bundle.ps1 -CHANNEL oss -ARCH x64 -RELEASE_TAG $env:GIT_RELEASE_TAG
+          ./script/windows/bundle.ps1 -CHANNEL oss -ARCH arm64 -RELEASE_TAG $env:GIT_RELEASE_TAG
 
       - name: Locate build outputs
         id: find
@@ -109,7 +109,7 @@ jobs:
         if: steps.find.outputs.exe_path
         uses: actions/upload-artifact@v4
         with:
-          name: poppy-windows-x64-binary
+          name: poppy-windows-arm64-binary
           path: ${{ steps.find.outputs.exe_path }}
           if-no-files-found: error
 
@@ -117,6 +117,6 @@ jobs:
         if: steps.find.outputs.installer_path
         uses: actions/upload-artifact@v4
         with:
-          name: poppy-windows-x64-installer
+          name: poppy-windows-arm64-installer
           path: ${{ steps.find.outputs.installer_path }}
           if-no-files-found: error
