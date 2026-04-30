@@ -1,0 +1,76 @@
+Poppy
+=====
+
+Poppy is a fork of Warp (https://github.com/warpdotdev/warp), an agentic
+terminal originally developed and open-sourced by Denver Technologies, Inc.
+("Warp Inc.") under the AGPL-3.0 license (most crates) and the MIT license
+(the `warpui_core` and `warpui` crates).
+
+This NOTICE file is provided in addition to the upstream LICENSE-AGPL and
+LICENSE-MIT, which remain in effect for all code in this repository.
+
+Upstream copyright and attribution
+----------------------------------
+
+Copyright (C) 2020-2026 Denver Technologies, Inc. — for all code originating
+in the upstream Warp repository. The upstream copyright notice is preserved
+in the LICENSE-AGPL and LICENSE-MIT files.
+
+Poppy modifications
+-------------------
+
+Modifications and additions made by Poppy contributors are released under the
+same license as the file they modify (AGPL-3.0 for app code, MIT for the UI
+framework crates). No re-licensing of upstream code is performed.
+
+Poppy-specific changes are limited to:
+
+  - Rebranding of the OSS channel from "warp-oss" to "poppy" (binary name,
+    bundle identifier, app metadata, channel state, autoupdate paths,
+    Windows packaging scripts).
+  - Replacement of the OSS channel icon (`app/channels/oss/icon/no-padding/`)
+    with a poppy flower drawing.
+  - Removal of upstream-specific GitHub Actions infrastructure
+    (issue templates, docubot, release pipelines) that does not apply
+    to a community fork.
+  - A minimal Windows CI workflow (`.github/workflows/build-windows.yml`)
+    and a stub installer pipeline (`.github/workflows/release-stub.yml`).
+  - Documentation rebranding (README, CONTRIBUTING, FAQ, SECURITY, POPPY.md).
+  - Disabling of cloud-facing default features (telemetry / Sentry crash
+    reporting / hosted-agent surface) for the OSS channel build, per the
+    project's de-cloudification goal.
+
+Trademarks
+----------
+
+"Warp" is a trademark of Warp Inc. Poppy uses neither the Warp name nor the
+Warp logo as its product identity. The string "warp" appears in this
+repository where it refers to upstream code paths, settings paths, or library
+crate names that we have intentionally left unchanged for compatibility
+(e.g. user data lives in `%APPDATA%\warp\Warp\` so a Warp → Poppy swap
+preserves user configuration).
+
+Where to file issues
+--------------------
+
+  - Issues with Poppy specifically: https://github.com/yanimeziani/poppy/issues
+  - Issues that also exist in upstream Warp: https://github.com/warpdotdev/warp/issues
+
+Third-party dependencies
+------------------------
+
+Poppy inherits all upstream third-party dependencies. The full list is
+maintained in the workspace `Cargo.toml`/`Cargo.lock`, and license texts for
+those dependencies are produced in `target/<profile>/resources/THIRD_PARTY_LICENSES.txt`
+during a release build.
+
+Notable upstream-acknowledged dependencies include:
+
+  - Tokio (MIT) - https://github.com/tokio-rs/tokio
+  - NuShell (MIT) - https://github.com/nushell/nushell
+  - Fig Completion Specs (MIT) - https://github.com/withfig/autocomplete
+  - Alacritty (Apache-2.0) - https://github.com/alacritty/alacritty
+  - Hyper (MIT) - https://github.com/hyperium/hyper
+  - FontKit (MIT/Apache-2.0) - https://github.com/servo/font-kit
+  - core-foundation-rs (MIT/Apache-2.0) - https://github.com/servo/core-foundation-rs
+  - Smol (Apache-2.0/MIT) - https://github.com/smol-rs/smol

@@ -1,97 +1,98 @@
-<a href="https://www.warp.dev">
-    <img width="1024" alt="Warp Agentic Development Environment product preview" src="https://github.com/user-attachments/assets/9976b2da-2edd-4604-a36c-8fd53719c6d4" />
-</a>
+<h1 align="center">Poppy</h1>
 
 <p align="center">
-  <a href="https://www.warp.dev">Website</a>
-  ·
-  <a href="https://www.warp.dev/code">Code</a>
-  ·
-  <a href="https://www.warp.dev/agents">Agents</a>
-  ·
-  <a href="https://www.warp.dev/terminal">Terminal</a>
-  ·
-  <a href="https://www.warp.dev/drive">Drive</a>
-  ·
-  <a href="https://docs.warp.dev">Docs</a>
-  ·
-  <a href="https://www.warp.dev/blog/how-warp-works">How Warp Works</a>
+  <em>A de-cloudified fork of Warp — no accounts, no telemetry, no servers.</em>
 </p>
 
+<p align="center">
+  <a href="#installation">Install</a>
+  ·
+  <a href="#what-this-is">What this is</a>
+  ·
+  <a href="#whats-different-from-upstream-warp">What's different</a>
+  ·
+  <a href="#building">Build</a>
+  ·
+  <a href="#license">License</a>
+</p>
+
+---
+
+## What this is
+
+Poppy is a community fork of [Warp](https://github.com/warpdotdev/warp), the agentic terminal that Warp Inc. open-sourced in 2026. It is to Warp what [VSCodium](https://github.com/VSCodium/vscodium) is to VS Code: the **same source, same UI, same UX**, but with the parts that phone home to a vendor's cloud removed or stubbed.
+
+The goal is a drop-in terminal you can install instead of Warp's official build and use offline, without an account, without telemetry, and without a hosted backend in the loop. Local features stay; cloud features either run against your own keys or no-op cleanly.
+
 > [!NOTE]
-> OpenAI is the founding sponsor of the new, open-source Warp repository, and the new agentic management workflows are powered by GPT models.
+> Poppy is early. The first published artifacts are placeholder installers (`v0.1.0-stub`) so the install/uninstall flow can be exercised end-to-end before the full client lands. Treat it as pre-alpha.
 
-<h1></h1>
+## What's different from upstream Warp
 
-## About
+| Area | Upstream Warp | Poppy |
+|---|---|---|
+| Telemetry / crash reporting | Sentry + custom events | Disabled at build time (`crash_reporting` feature off) |
+| Account / sign-in | Required for cloud features | Stubbed (in progress) |
+| Cloud agents (Oz, hosted models) | Backed by Warp servers | Local-only; bring-your-own-key models |
+| Auto-update | Pulls from Warp's CDN | Disabled (download new releases manually) |
+| Branding | Warp / Warp Drive | Poppy |
+| Source license | AGPL-3.0 (app) + MIT (UI crates) | **Unchanged.** AGPL-3.0 (app) + MIT (UI crates) |
 
-[Warp](https://www.warp.dev) is an agentic development environment, born out of the terminal. Use Warp's built-in coding agent, or bring your own CLI agent (Claude Code, Codex, Gemini CLI, and others).
+What we deliberately keep:
+
+- The full WarpUI rendering layer
+- The agent harness (so you can run Claude Code, Codex, Gemini CLI, etc. inside Poppy)
+- All terminal UX: blocks, command palette, themes, AI suggestions, settings schema
+- Settings + theme files at their existing paths so an in-place swap over a Warp install picks up your existing config
 
 ## Installation
 
-You can [download Warp](https://www.warp.dev/download) and [read our docs](https://docs.warp.dev/) for platform-specific instructions.
+### Windows
 
-## Warp Contributions Overview Dashboard
+Download the latest installer from the [releases page](https://github.com/yanimeziani/poppy/releases) and run it.
 
-Explore [build.warp.dev](https://build.warp.dev) to:
-- Watch thousands of Oz agents triage issues, write specs, implement changes, and review PRs
-- View top contributors and in-flight features
-- Track your own issues with GitHub sign-in
-- Click into active agent sessions in a web-compiled Warp terminal
+- `Poppy-Setup-x64-stub.exe` — Intel/AMD 64-bit, Windows 10 1903+ / Windows 11
+- `Poppy-Setup-arm64-stub.exe` — ARM64, Windows 10 1903+ / Windows 11
 
-## Licensing
+The installer drops `poppy.exe` at `C:\Program Files\Poppy\` and registers an uninstaller. To swap over an existing Warp install, see [`docs/poppy/install-target.md`](docs/poppy/install-target.md) for the snapshot/rollback procedure.
 
-Warp's UI framework (the `warpui_core` and `warpui` crates) are licensed under the [MIT license](LICENSE-MIT).
+### macOS / Linux
 
-The rest of the code in this repository is licensed under the [AGPL v3](LICENSE-AGPL).
+Not yet packaged. The codebase builds on macOS and Linux upstream; bundling for those platforms in Poppy is on the roadmap.
 
-## Open Source & Contributing
+## Building
 
-Warp's client codebase is open source and lives in this repository. We welcome community contributions and have designed a lightweight workflow to help new contributors get started. For the full contribution flow, read our [CONTRIBUTING.md](CONTRIBUTING.md) guide.
+Poppy builds via GitHub Actions on `windows-latest`. Local builds are unsupported today: a release build of the workspace OOM-kills with less than ~16 GB RAM (a constraint that exists upstream too).
 
-### Issue to PR
+To produce an installer yourself, fork this repo and run the **Build Poppy (Windows)** workflow from the Actions tab — or just push to `master` on your fork. The workflow is in [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml). Output:
 
-Before filing, [search existing issues](https://github.com/warpdotdev/warp/issues?q=is%3Aissue+is%3Aopen+sort%3Areactions-%2B1-desc) for your bug or feature request. If nothing exists, [file an issue](https://github.com/warpdotdev/warp/issues/new/choose) using our templates. Security vulnerabilities should be reported privately as described in [CONTRIBUTING.md](CONTRIBUTING.md#reporting-security-issues).
+- `poppy-windows-arm64-binary` — the bare `poppy.exe`
+- `poppy-windows-arm64-installer` — the Inno Setup installer
 
-Once filed, a Warp maintainer reviews the issue and may apply a readiness label: [`ready-to-spec`](https://github.com/warpdotdev/warp/issues?q=is%3Aissue+is%3Aopen+label%3Aready-to-spec) signals the design is open for contributors to spec out, and [`ready-to-implement`](https://github.com/warpdotdev/warp/issues?q=is%3Aissue+is%3Aopen+label%3Aready-to-implement) signals the design is settled and code PRs are welcome. Anyone can pick up a labeled issue — mention **@oss-maintainers** on an issue if you'd like it considered for a readiness label.
+For deeper engineering notes (cargo profiles, feature flags, bundling internals), see [`POPPY.md`](POPPY.md).
 
-### Building the Repo Locally
+## License
 
-To build and run Warp from source:
+Poppy is a fork. **Upstream copyright and license terms are preserved exactly as they appear in [LICENSE-AGPL](LICENSE-AGPL) and [LICENSE-MIT](LICENSE-MIT).** No re-licensing — Denver Technologies, Inc. holds the copyright on the upstream code.
 
-```bash
-./script/bootstrap   # platform-specific setup
-./script/run         # build and run Warp
-./script/presubmit   # fmt, clippy, and tests
-```
+| Component | License | Copyright |
+|---|---|---|
+| Warp client app (most crates) | [AGPL v3](LICENSE-AGPL) | © 2020-2026 Denver Technologies, Inc. |
+| WarpUI framework (`warpui_core`, `warpui`) | [MIT](LICENSE-MIT) | © 2020-2026 Denver Technologies, Inc. |
+| Modifications by Poppy contributors | Same as the file they modify | © 2026 Poppy contributors |
 
-See [WARP.md](WARP.md) for the full engineering guide, including coding style, testing, and platform-specific notes.
+Distributing Poppy or a derivative requires the same source-availability obligations the AGPL imposes on Warp itself. See [NOTICE](NOTICE) for the third-party attribution Poppy adds on top.
 
-## Joining the Team
+## Acknowledgements
 
-Interested in joining the team? See our [open roles](https://www.warp.dev/careers).
+Poppy exists because Warp Inc. open-sourced their client. Every line of UX, every block, every animation, every keymap — that's their work. Poppy strips the cloud surface and renames the binary; it does not reinvent the terminal.
 
-## Support and Questions
+If you want the cloud-integrated experience (hosted agents, Drive sync, team features), use the [official Warp client](https://www.warp.dev/download) instead.
 
-1. See our [docs](https://docs.warp.dev/) for a comprehensive guide to Warp's features.
-2. Join our [Slack Community](https://go.warp.dev/join-preview) to connect with other users and get help from the Warp team.
-3. Try our [Preview build](https://www.warp.dev/download-preview) to test the latest experimental features.
-4. Mention **@oss-maintainers** on any issue to escalate to the team — for example, if you encounter problems with the automated agents.
+## Contributing
 
-## Code of Conduct
+See [CONTRIBUTING.md](CONTRIBUTING.md). The flow is intentionally lighter than upstream — no spec PRs required, no Oz reviewer; just open an issue or PR.
 
-We ask everyone to be respectful and empathetic. Warp follows the [Code of Conduct](CODE_OF_CONDUCT.md). To report violations, email warp-coc at warp.dev.
+## Security
 
-## Open Source Dependencies
-
-We'd like to call out a few of the [open source dependencies](https://docs.warp.dev/help/licenses) that have helped Warp to get off the ground:
-
-* [Tokio](https://github.com/tokio-rs/tokio)
-* [NuShell](https://github.com/nushell/nushell)
-* [Fig Completion Specs](https://github.com/withfig/autocomplete)
-* [Warp Server Framework](https://github.com/seanmonstar/warp)
-* [Alacritty](https://github.com/alacritty/alacritty)
-* [Hyper HTTP library](https://github.com/hyperium/hyper)
-* [FontKit](https://github.com/servo/font-kit)
-* [Core-foundation](https://github.com/servo/core-foundation-rs)
-* [Smol](https://github.com/smol-rs/smol)
+Found a vulnerability? Don't file a public issue. See [SECURITY.md](SECURITY.md).

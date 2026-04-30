@@ -1,144 +1,67 @@
-# Frequently Asked Questions
+# Poppy FAQ
 
-This FAQ covers the questions we hear most often about contributing to the Warp client, working with agents in this repository, and how this repo fits into Warp the product. For the full contribution flow, see [CONTRIBUTING.md](CONTRIBUTING.md). For engineering details — build setup, code style, testing — see [WARP.md](WARP.md).
+## What is Poppy?
 
-## Contributing
+A community fork of [Warp](https://github.com/warpdotdev/warp), the agentic terminal Warp Inc. open-sourced in 2026. Poppy is to Warp what [VSCodium](https://github.com/VSCodium/vscodium) is to VS Code: same source, same UX, vendor cloud surface stripped.
 
-### How do I contribute?
+## Why does this exist?
 
-Start with a GitHub issue. Bug reports are implicitly ready to fix once triaged; feature requests go through a short spec PR before any code is written. The full flow — readiness labels, spec PRs, code PRs, review — is documented in [CONTRIBUTING.md](CONTRIBUTING.md).
+Warp is a great terminal that's tightly integrated with a hosted backend — sign-in, telemetry, hosted AI agents, Drive sync. For users who want the UX without the cloud (privacy-conscious devs, air-gapped environments, offline workflows), there wasn't a build that just… didn't phone home. Poppy is that build.
 
-### How do I file a good bug report or feature request?
+## Is Poppy supported by Warp Inc.?
 
-Use the [issue templates](https://github.com/warpdotdev/warp/issues/new/choose). For bugs, include reproduction steps, expected vs. actual behavior, your Warp version (`Settings → About`), and OS. For features, describe the user-facing problem before proposing an implementation.
+No. Poppy is an unofficial fork. We're not affiliated with Warp Inc. and we don't speak for them. If you have problems with the **official** Warp client, file with [warpdotdev/warp](https://github.com/warpdotdev/warp). If you have problems with **Poppy specifically**, file [here](https://github.com/yanimeziani/poppy/issues).
 
-If you're already running Warp, the `/feedback` command files an issue with logs and environment details attached automatically.
+## Can I use it as a drop-in replacement for Warp on my machine?
 
-### What do the readiness labels mean?
+That's the goal. The installer drops `poppy.exe` at `C:\Program Files\Poppy\` rather than overwriting your Warp install. To swap in place over an existing Warp install, see [`docs/poppy/install-target.md`](docs/poppy/install-target.md) — it covers the snapshot/rollback procedure.
 
-- **`ready-to-spec`** — the problem is understood, the design is open. Next step is a spec PR.
-- **`ready-to-implement`** — the design is settled, or it's a triaged bug. Next step is a code PR.
-- **`needs-mocks`** — design mocks are required before implementation can start.
+Settings, themes, and SQLite data live at `%LOCALAPPDATA%\warp\Warp\` and `%APPDATA%\warp\Warp\` and are intentionally **not touched** by Poppy's installer. Your config carries over.
 
-Anyone can pick up a labeled issue. Mention **@oss-maintainers** on an issue if it needs triage or readiness re-evaluation.
+## What does "de-cloudified" actually mean?
 
-### Why do features need a spec PR before code?
+It's a spectrum, and we're working through it:
 
-Specs make scope, behavior, and architecture reviewable on their own, before someone writes code that may need to be thrown away. Each spec PR adds a `product.md` (desired behavior) and a `tech.md` (implementation plan) under `specs/GH<issue-number>/`. See [Opening a Spec PR](CONTRIBUTING.md#opening-a-spec-pr) for what each document should contain.
+- **Done:** Sentry / crash reporting compiled out (`crash_reporting` feature off in OSS builds)
+- **Done:** Auto-update disabled (no calls to Warp's CDN to check for updates)
+- **In progress:** Stub the auth/account flow so the client doesn't try to sign you in
+- **In progress:** Replace the GraphQL client to Warp's servers with a no-op layer
+- **Future:** Same for Firebase auth, managed-secrets fetch, and Warp Drive sync
 
-### How do I build and run Warp from source?
+The goal isn't "no network ever" — it's "no network calls to Warp's servers without your explicit consent." You can still use bring-your-own-key models with Claude / OpenAI / Gemini directly.
 
-```bash
-./script/bootstrap   # platform-specific setup
-cargo run            # build and run Warp
-./script/presubmit   # fmt, clippy, and tests
-```
+## Will my AI agents still work?
 
-macOS, Linux, and Windows are all supported. Platform-specific setup is handled by `./script/bootstrap`. See [WARP.md](WARP.md) for the full engineering guide.
+The agent harness — the part of Warp that runs Claude Code, Codex, Gemini CLI, your own MCP servers — stays. Poppy doesn't ship Warp's hosted agent (Oz), so:
 
-### Will my PR be reviewed by a human or by an agent?
+- ✅ ACP-compatible agents you bring with API keys
+- ✅ Claude Code, Codex, Gemini CLI run as external processes inside the terminal
+- ❌ Warp's hosted agent mode (the "ask Warp to fix this" experience that runs server-side)
 
-Both. When you open a PR, Oz is auto-assigned and produces an initial review. Once Oz approves, it automatically requests a follow-up review from a Warp team subject-matter expert. You don't need to assign reviewers manually.
+## Will my settings, themes, and aliases carry over?
 
-### My PR has been sitting without review — what do I do?
+Yes. Poppy reads from the same `%APPDATA%\warp\Warp\` (config) and `%LOCALAPPDATA%\warp\Warp\` (cache + data) paths upstream uses. Don't be surprised by the path name — it's intentional, so a Warp → Poppy swap is seamless.
 
-After you push changes that address Oz's feedback, comment `/oz-review` on the PR (up to three times per PR) to request a re-review. If something looks stuck or you've used your re-reviews, mention **@oss-maintainers** to escalate to the team.
+## How do I build Poppy?
 
-### What's the difference between a contributor and a collaborator?
+`./script/windows/bundle.ps1 -CHANNEL oss -ARCH arm64` on a windows-latest box, or — easier — push to your fork and let GitHub Actions do it. See [POPPY.md](POPPY.md).
 
-A **contributor** is anyone who contributes to the project — by filing an issue, opening a PR, helping triage, or participating in discussion. Most people who help out are contributors. You don't need permission or a status of any kind; just file an issue or open a PR.
+Local builds aren't supported because the workspace OOM-kills under ~16 GB RAM. Even Warp's own CI has comments about this.
 
-A **collaborator** is a formal GitHub role we grant to contributors with a track record of merged PRs in this repo. Collaborators get expanded permissions: applying and managing issue labels, dispatching Oz directly with `@oz` on any ready issue, and using complimentary Oz credits for work in this repo.
+## Is Poppy stable?
 
-### How do I become a collaborator?
+No. We tag stub releases (`v0.1.0-stub`) until the full client compiles cleanly with the cloud crates stripped. Don't run it on a machine where a crash matters.
 
-Contributors with several merged PRs may be invited to become collaborators. There's no formal application — keep contributing, and a maintainer will reach out.
+## Is Poppy legal?
 
-## Using an agent on this repo
+Yes. Warp Inc. shipped the source under [AGPL-3.0](LICENSE-AGPL) (and [MIT](LICENSE-MIT) for the UI framework crates). AGPL specifically permits forks; what it requires is that derivatives stay open. Poppy preserves the original copyright (Denver Technologies, Inc.) on every file we didn't write, and contributes back-compatible changes under the same licenses.
 
-### Can I use my own coding agent to contribute?
+## Can I redistribute Poppy?
 
-Yes. Use whatever you like — Warp's built-in agent, Claude Code, Codex, Gemini CLI, Cursor, others, or no agent at all. The repo ships agent-readable context (skills under [`.agents/skills/`](.agents/skills/), specs under [`specs/`](specs/), and [`WARP.md`](WARP.md)) that any harness supporting these formats can pick up.
+Yes, under the terms of AGPL-3.0 / MIT — same as upstream. Don't strip the LICENSE files or pretend you wrote it.
 
-### Can I use Codex or Claude models with my existing subscriptions in Warp, or submit a PR to add that?
+## Where can I get help?
 
-Not today. Warp's built-in agent harness runs server-side and isn't open in this repo today.
-
-That said, we plan to support [ACP (agent client protocol)](https://agentclientprotocol.com/) in Warp, so you could connect other models or subscriptions directly and get a native Warp experience for your coding agent of choice.
-
-[This is tracked on our roadmap](https://github.com/warpdotdev/warp/issues/9233), and we will update the community as we explore this.
-
-### How can I get Oz to implement an issue for me?
-
-Mention **@oss-maintainers** on any issue with a readiness label and ask. Approved requests run on **complimentary Oz credits** — you don't need to set up your own Oz account or pay for compute.
-
-Once you're a collaborator, you can mention `@oz` directly on any ready issue to dispatch it without waiting for a maintainer.
-
-### Do I have to pay anything to contribute here?
-
-No. Contributing by hand or with your own agent is free. Oz runs on Warp's credits for approved requests on this repo, and is free for collaborators contributing back to it.
-
-### Are agent-generated PRs held to the same bar as human ones?
-
-Yes. The same Oz + SME review, the same tests, and the same `cargo fmt` / `cargo clippy` / presubmit checks apply regardless of who (or what) wrote the code. Whether a PR is hand-written or agent-written doesn't change the quality bar — it changes how quickly you can iterate to meet it.
-
-### Will my issues, comments, or code be used to train models?
-
-No. Warp does not use contributions to this repository, or the discussion around them, for model training.
-
-## What's open source and what isn't
-
-### Is Warp fully open source?
-
-The Warp **client** is open source: the app and most crates are licensed under [AGPL v3](LICENSE-AGPL), and the UI framework crates (`warpui_core`, `warpui`) are licensed under [MIT](LICENSE-MIT). The **server**, the **Warp Drive backend**, and **Oz** (our agent orchestration layer) are not in this repository and remain proprietary today.
-
-### What lives in this repo and what doesn't?
-
-**In this repo:** the Warp client app, the WarpUI framework, integration tests, agent skills, and feature specs.
-
-**Not in this repo:** the server, the Drive backend, hosted authentication, and Oz orchestration.
-
-### Can I run Warp without signing in or using Warp's cloud?
-
-Some functionality works fully locally; other features (Drive sync, hosted-model agents, team features) require Warp's backend. We're working to make the locally-runnable surface clearer over time, including more explicit controls in onboarding.
-
-### Will the server or Oz ever be open-sourced?
-
-We haven't committed to a date and don't want to overpromise. Opening the client under AGPL is a one-way door, and opening the server would be a similar commitment — we'll be explicit when and if we make it.
-
-## Licensing
-
-### Why did you pick this license — AGPL for the app and MIT for the UI crates?
-
-We wanted two different things from each part of the codebase, so we picked two different licenses.
-
-For the **client app**, we chose [AGPL v3](LICENSE-AGPL) because we wanted modifications to stay open. A permissive license like MIT or Apache 2.0 would let someone fork the client, make changes, and ship a closed-source product back to users — that's a pattern we've seen burn end-user-facing open source projects, and it's not the ecosystem we want to seed. AGPL closes the network-use loophole that GPL leaves open, so a hosted derivative of the client is also covered. The trade-off is that AGPL is stricter than what some companies are comfortable embedding into proprietary products, and we accept that — the client isn't where we expect that kind of reuse.
-
-For the **UI framework crates** (`warpui_core`, `warpui`), we chose [MIT](LICENSE-MIT) because they're general-purpose infrastructure that's useful well outside Warp. We want people building unrelated apps in Rust to be able to pick them up without the friction AGPL introduces. Keeping that layer permissive is good for the framework's reach and good for upstream contributions back to it.
-
-In short: AGPL where we want derivatives to stay open, MIT where we want maximum reuse.
-
-### Can I use Warp at my company under AGPL?
-
-Yes. Using Warp as your terminal or development environment doesn't trigger AGPL's network or distribution obligations. AGPL applies if you modify the client *and* distribute or host that modified version for others.
-
-### Why is there a CLA?
-
-The CLA grants Warp the rights it needs to redistribute contributions under this project's licenses (AGPL and MIT) and to address future licensing and compliance needs. It does not change the license of code contributed to this repo.
-
-### Can someone fork Warp?
-
-Yes — that's what AGPL is for. The license prevents fully-proprietary relaunches; open derivatives are welcome.
-
-## Help and security
-
-### Where do I get help?
-
-- The [Warp docs](https://docs.warp.dev/) for using the product.
-- [GitHub Issues](https://github.com/warpdotdev/warp/issues) for bug reports and feature requests.
-- The [Slack community](https://go.warp.dev/join-preview) for general questions and discussion.
-- Mention **@oss-maintainers** on an issue or PR to escalate to the team.
-
-### How do I report a security vulnerability?
-
-Please don't open a public GitHub issue. See [SECURITY.md](SECURITY.md) — report via [security@warp.dev](mailto:security@warp.dev) or open a private [GitHub Security Advisory](https://github.com/warpdotdev/Warp/security/advisories/new).
+- [Issues](https://github.com/yanimeziani/poppy/issues) for Poppy-specific bugs
+- [Upstream issues](https://github.com/warpdotdev/warp/issues) for behavior that's the same in official Warp
+- The [Warp docs](https://docs.warp.dev/) for using the underlying terminal — most of it applies to Poppy too
