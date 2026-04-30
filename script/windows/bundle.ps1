@@ -70,6 +70,11 @@ if ($DEBUG_BUILD) {
     # catch violations that would otherwise silently pass in
     # a normal release build (e.g. in stable).
     $CARGO_PROFILE = 'rltoda'
+} elseif ("$CHANNEL" -eq 'oss') {
+    # Poppy/oss skips LTO. ThinLTO adds ~30% to cold compile time on the
+    # ~5000-file workspace and we don't ship perf-critical first-build
+    # binaries — a slightly larger exe is worth the much faster CI.
+    $CARGO_PROFILE = 'release'
 } else {
     $CARGO_PROFILE = 'rlto'
 }

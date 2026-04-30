@@ -29,6 +29,9 @@ jobs:
       CARGO_TERM_COLOR: always
       CARGO_INCREMENTAL: 0
       RUST_BACKTRACE: 1
+      # sccache: route rustc artifact caching through the GitHub Actions cache.
+      RUSTC_WRAPPER: sccache
+      SCCACHE_GHA_ENABLED: 'true'
 
     steps:
       - name: Checkout
@@ -47,6 +50,9 @@ jobs:
         with:
           version: '25.x'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up sccache
+        uses: mozilla-actions/sccache-action@v0.0.5
 
       - name: Locate Inno Setup
         shell: pwsh
@@ -81,6 +87,11 @@ jobs:
           GIT_RELEASE_TAG: ${{ github.event.inputs.release_tag || '0.1.0' }}
         run: |
           ./script/windows/bundle.ps1 -CHANNEL oss -ARCH arm64 -RELEASE_TAG $env:GIT_RELEASE_TAG
+
+      - name: sccache stats
+        shell: pwsh
+        if: always()
+        run: sccache --show-stats
 
       - name: Locate build outputs
         id: find
